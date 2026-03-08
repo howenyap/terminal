@@ -288,8 +288,8 @@ pub fn wrong_method_returns_405_test() {
 }
 
 pub fn identical_requests_hit_upstream_once_within_ttl_test() {
-  reset_cache_and_counter()
-  let fetch = cached_fetcher(15_000, counting_success_fetch)
+  reset_counter()
+  let #(_cache, fetch) = cached_fetcher(15_000, counting_success_fetch)
 
   let first = perform(http.Get, "/bus-stops", context_with(fetch, 15_000))
   let second = perform(http.Get, "/bus-stops", context_with(fetch, 15_000))
@@ -300,8 +300,8 @@ pub fn identical_requests_hit_upstream_once_within_ttl_test() {
 }
 
 pub fn cache_key_separates_distinct_queries_test() {
-  reset_cache_and_counter()
-  let fetch = cached_fetcher(15_000, counting_success_fetch)
+  reset_counter()
+  let #(_cache, fetch) = cached_fetcher(15_000, counting_success_fetch)
 
   let first =
     perform(
@@ -322,8 +322,8 @@ pub fn cache_key_separates_distinct_queries_test() {
 }
 
 pub fn expired_entries_refetch_upstream_test() {
-  reset_cache_and_counter()
-  let fetch = cached_fetcher(50, counting_success_fetch)
+  reset_counter()
+  let #(_cache, fetch) = cached_fetcher(50, counting_success_fetch)
 
   let first = perform(http.Get, "/bus-stops", context_with(fetch, 50))
   process.sleep(100)
@@ -335,8 +335,8 @@ pub fn expired_entries_refetch_upstream_test() {
 }
 
 pub fn stale_cache_is_not_served_when_upstream_fails_test() {
-  reset_cache_and_counter()
-  let fetch = cached_fetcher(50, succeed_once_then_fail_fetch)
+  reset_counter()
+  let #(_cache, fetch) = cached_fetcher(50, succeed_once_then_fail_fetch)
 
   let first = perform(http.Get, "/bus-stops", context_with(fetch, 50))
   process.sleep(100)
@@ -348,8 +348,8 @@ pub fn stale_cache_is_not_served_when_upstream_fails_test() {
 }
 
 pub fn transport_errors_are_not_cached_test() {
-  reset_cache_and_counter()
-  let fetch = cached_fetcher(15_000, fail_once_then_succeed_fetch)
+  reset_counter()
+  let #(_cache, fetch) = cached_fetcher(15_000, fail_once_then_succeed_fetch)
 
   let first = perform(http.Get, "/bus-stops", context_with(fetch, 15_000))
   let second = perform(http.Get, "/bus-stops", context_with(fetch, 15_000))
@@ -363,18 +363,13 @@ fn cached_fetcher(
   ttl_ms: Int,
   mock_fetch: fn(request.Request(String)) ->
     Result(response.Response(BitArray), proxy.FetchError),
-) -> proxy.UpstreamFetcher {
+) -> #(cache.Cache, proxy.UpstreamFetcher) {
+  let c = cache.init()
   let name = process.new_name("test_single_flight")
   let assert Ok(_) = single_flight.start(name)
   let single_flight_worker = process.named_subject(name)
 
-  proxy.with_cache(ttl_ms, 5000, single_flight_worker, mock_fetch)
-}
-
-fn reset_cache_and_counter() -> Nil {
-  cache.init()
-  cache.clear()
-  reset_counter()
+  #(c, proxy.with_cache(c, ttl_ms, 5000, single_flight_worker, mock_fetch))
 }
 
 fn counting_success_fetch(

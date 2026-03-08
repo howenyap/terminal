@@ -15,13 +15,13 @@ pub fn main() -> Nil {
   dot_env.load_default()
 
   let assert Ok(config) = config.from_env()
-  cache.init()
+  let cache = cache.init()
 
   let single_flight_worker_name = process.new_name("single_flight_worker")
 
   let assert Ok(_) =
     supervisor.new(supervisor.OneForOne)
-    |> supervisor.add(cache.sweeper_child_spec())
+    |> supervisor.add(cache.sweeper_child_spec(cache))
     |> supervisor.add(single_flight.child_spec(single_flight_worker_name))
     |> supervisor.start
 
@@ -29,7 +29,7 @@ pub fn main() -> Nil {
   let context =
     router.Context(
       config: config,
-      fetch: proxy.live_fetcher(config, single_flight_worker),
+      fetch: proxy.live_fetcher(config, cache, single_flight_worker),
     )
 
   let assert Ok(_) =

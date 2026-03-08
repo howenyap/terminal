@@ -1,47 +1,29 @@
 -module(cache_ffi).
 
--export([clear/0, init/0, insert/3, lookup/1, now_ms/0, sweep/0]).
-
--define(TABLE, cache).
+-export([init/0, clear/1, insert/4, lookup/2, sweep/1, now_ms/0]).
 
 init() ->
-    case ets:info(?TABLE) of
-        undefined ->
-            _ = ets:new(?TABLE,
-                        [named_table,
-                         public,
-                         set,
-                         {read_concurrency, true},
-                         {write_concurrency, true}]),
-            nil;
-        _ ->
-            nil
-    end.
+    ets:new(cache, [public, set, {read_concurrency, true}, {write_concurrency, true}]).
 
-clear() ->
-    case ets:info(?TABLE) of
-        undefined ->
-            nil;
-        _ ->
-            true = ets:delete_all_objects(?TABLE),
-            nil
-    end.
+clear(Table) ->
+    true = ets:delete_all_objects(Table),
+    nil.
 
-lookup(Key) ->
-    case ets:lookup(?TABLE, Key) of
-        [{Key, ExpiresAtMs, Value}] ->
+lookup(Table, Key) ->
+    case ets:lookup(Table, Key) of
+        [{_Key, ExpiresAtMs, Value}] ->
             {some, {ExpiresAtMs, Value}};
         [] ->
             none
     end.
 
-insert(Key, ExpiresAtMs, Value) ->
-    true = ets:insert(?TABLE, {Key, ExpiresAtMs, Value}),
+insert(Table, Key, ExpiresAtMs, Value) ->
+    true = ets:insert(Table, {Key, ExpiresAtMs, Value}),
     nil.
 
-sweep() ->
+sweep(Table) ->
     Now = erlang:system_time(millisecond),
-    ets:select_delete(?TABLE, [{{'_', '$1', '_'}, [{'<', '$1', Now}], [true]}]),
+    ets:select_delete(Table, [{{'_', '$1', '_'}, [{'<', '$1', Now}], [true]}]),
     nil.
 
 now_ms() ->

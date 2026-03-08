@@ -47,6 +47,7 @@ type FetchResult =
 
 pub fn live_fetcher(
   config: Config,
+  cache: cache.Cache,
   single_flight_worker: Subject(single_flight.Message(FetchResult)),
 ) -> UpstreamFetcher {
   let client_config =
@@ -54,6 +55,7 @@ pub fn live_fetcher(
     |> httpc.timeout(config.request_timeout_ms)
 
   with_cache(
+    cache,
     config.cache_ttl_ms,
     config.request_timeout_ms,
     single_flight_worker,
@@ -71,6 +73,7 @@ pub fn live_fetcher(
 }
 
 pub fn with_cache(
+  cache: cache.Cache,
   ttl_ms: Int,
   timeout_ms: Int,
   single_flight_worker: Subject(single_flight.Message(FetchResult)),
@@ -78,7 +81,7 @@ pub fn with_cache(
 ) -> UpstreamFetcher {
   fn(request) {
     let key = cache_key(request)
-    let cached_entry = cache.lookup(key)
+    let cached_entry = cache.lookup(cache, key)
 
     case cached_entry |> option.then(fresh_value) {
       option.Some(response) -> Ok(response)
@@ -94,7 +97,7 @@ pub fn with_cache(
         result
         |> result.map(fn(response) {
           case should_cache(response) {
-            True -> cache.store(key, response, ttl_ms)
+            True -> cache.store(cache, key, response, ttl_ms)
             False -> Nil
           }
 
