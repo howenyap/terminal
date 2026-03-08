@@ -8,3 +8,10 @@ Install [Gleam](https://gleam.run/install/)
 # Commands 
 - run: `gleam run`
 - test: `gleam test`
+
+# Packages
+## Cache
+Uses [ets](https://www.erlang.org/doc/apps/stdlib/ets.html) for caching via Erlang FFI bindings.
+
+## Single Flight
+Uses [actors](https://hexdocs.pm/gleam_otp/gleam/otp/actor.html) to ensure only one request of the same key exists at a time.
