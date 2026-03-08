@@ -22,6 +22,8 @@ gleam_json = ">= 3.1.0 and < 4.0.0"
 gleam_erlang = ">= 1.3.0 and < 2.0.0"
 dot_env = ">= 1.2.0 and < 2.0.0"
 gleam_otp = ">= 1.2.0 and < 2.0.0"
+cache = { path = "./packages/cache" }
+single_flight = { path = "./packages/single_flight" }
 
 [dev-dependencies]
 gleeunit = ">= 1.9.0 and < 2.0.0"

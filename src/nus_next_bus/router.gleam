@@ -1,6 +1,7 @@
 import gleam/bytes_tree
 import gleam/http
 import gleam/http/response
+import gleam/httpc
 import gleam/int
 import gleam/json
 import nus_next_bus/config
@@ -66,8 +67,15 @@ fn proxy_endpoint(
       Ok(upstream_request) -> {
         case context.fetch(upstream_request) {
           Ok(upstream_response) -> proxy_response(upstream_response)
-          Error(proxy.UpstreamRequestFailed(_)) ->
-            bad_gateway("Upstream request failed")
+          Error(fetch_error) -> {
+            wisp.log_warning(
+              "Upstream fetch failed for "
+              <> upstream_path
+              <> ": "
+              <> describe_fetch_error(fetch_error),
+            )
+            json_error(502, "bad_gateway", "Upstream request failed")
+          }
         }
       }
       Error(proxy.InvalidBaseUrl) -> invalid_base_url()
@@ -127,6 +135,33 @@ fn json_error(status: Int, error: String, message: String) -> wisp.Response {
 fn bad_gateway(message: String) -> wisp.Response {
   wisp.log_warning(message)
   json_error(502, "bad_gateway", message)
+}
+
+fn describe_fetch_error(fetch_error: proxy.FetchError) -> String {
+  case fetch_error {
+    proxy.UpstreamRequestFailed(http_error) -> describe_http_error(http_error)
+    proxy.SingleFlightWorkerFailed -> "single_flight_worker_failed"
+  }
+}
+
+fn describe_http_error(http_error: httpc.HttpError) -> String {
+  case http_error {
+    httpc.InvalidUtf8Response -> "invalid_utf8_response"
+    httpc.ResponseTimeout -> "response_timeout"
+    httpc.FailedToConnect(ip4, ip6) ->
+      "failed_to_connect(ip4="
+      <> describe_connect_error(ip4)
+      <> ", ip6="
+      <> describe_connect_error(ip6)
+      <> ")"
+  }
+}
+
+fn describe_connect_error(connect_error: httpc.ConnectError) -> String {
+  case connect_error {
+    httpc.Posix(code) -> "posix:" <> code
+    httpc.TlsAlert(code, detail) -> "tls_alert:" <> code <> ":" <> detail
+  }
 }
 
 fn invalid_base_url() -> wisp.Response {

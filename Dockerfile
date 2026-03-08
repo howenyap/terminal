@@ -10,6 +10,7 @@ WORKDIR /app
 
 COPY gleam.toml manifest.toml ./
 COPY src ./src
+COPY packages ./packages
 
 RUN gleam export erlang-shipment
 

@@ -1,4 +1,5 @@
 import dot_env/env
+import gleam/int
 import gleam/option
 import gleam/result
 import gleam/string
@@ -10,6 +11,7 @@ pub type Config {
     username: String,
     password: String,
     request_timeout_ms: Int,
+    cache_ttl_ms: Int,
     cors_allow_origin: String,
     secret_key_base: String,
   )
@@ -28,15 +30,18 @@ const default_username = "NUSnextbus"
 
 const default_request_timeout_ms = 5000
 
+const default_cache_ttl_ms = 5000
+
 const default_cors_allow_origin = "*"
 
 pub fn from_env() -> Result(Config, StartupError) {
   new(
-    port: default_port,
+    port: option.unwrap(get_int_env("PORT"), default_port),
     base_url: default_base_url,
     username: default_username,
     password: get_string_env("NUS_NEXTBUS_PASSWORD"),
     request_timeout_ms: default_request_timeout_ms,
+    cache_ttl_ms: default_cache_ttl_ms,
     cors_allow_origin: default_cors_allow_origin,
     secret_key_base: get_string_env("SECRET_KEY_BASE"),
   )
@@ -48,6 +53,7 @@ pub fn new(
   username username: String,
   password password: option.Option(String),
   request_timeout_ms request_timeout_ms: Int,
+  cache_ttl_ms cache_ttl_ms: Int,
   cors_allow_origin cors_allow_origin: String,
   secret_key_base secret_key_base: option.Option(String),
 ) -> Result(Config, StartupError) {
@@ -63,6 +69,7 @@ pub fn new(
     username: username,
     password: password,
     request_timeout_ms: request_timeout_ms,
+    cache_ttl_ms: cache_ttl_ms,
     cors_allow_origin: cors_allow_origin,
     secret_key_base: secret_key_base,
   ))
@@ -76,5 +83,13 @@ fn get_string_env(name: String) -> option.Option(String) {
       True -> option.None
       False -> option.Some(value)
     }
+  })
+}
+
+fn get_int_env(name: String) -> option.Option(Int) {
+  get_string_env(name)
+  |> option.then(fn(value) {
+    int.parse(value)
+    |> option.from_result
   })
 }
