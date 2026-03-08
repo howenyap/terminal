@@ -18,5 +18,16 @@ jobs:
           gleam-version: "1.14.0"
           rebar3-version: "3"
       - run: gleam deps download
-      - run: gleam test
-      - run: gleam format --check src test
+      - name: Test app
+        run: gleam test
+      - name: Test cache package
+        working-directory: packages/cache
+        run: |
+          gleam deps download
+          gleam test
+      - name: Test single_flight package
+        working-directory: packages/single_flight
+        run: |
+          gleam deps download
+          gleam test
+      - run: gleam format --check src test packages
