@@ -23,7 +23,7 @@ pub fn sweeper_child_spec() -> supervision.ChildSpecification(Nil) {
 }
 
 fn start_sweeper() -> actor.StartResult(process.Subject(SweepMsg)) {
-  actor.new_with_initialiser(sweep_interval_ms, fn(self) {
+  actor.new_with_initialiser(1000, fn(self) {
     schedule_sweep(self)
     actor.initialised(self)
     |> actor.returning(self)
